@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  naturals_bridal_be:
+    restart: always
+    image: registry.gitlab.com/naturals_bridal_be/web-service
+    command: gunicorn naturals_bridal_be.wsgi:application --bind 0.0.0.0:8009 --workers 3 --log-level=DEBUG
+    env_file: .env
+    ports:
+      - "8009:8009"
+    expose:
+      - "8000"
+    networks:
+    - naturals_bridal_be_backend_tier
+
+  celery:
+    image: registry.gitlab.com/naturals_bridal_be/web-service
+    command: celery -A naturals_bridal_be worker -l info
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - naturals_bridal_be_backend_tier
+
+  nginx:
+    image: registry.gitlab.com/classmate2/web-service/nginx
+    depends_on:
+      - naturals_bridal_be
+    ports:
+      - "80:80"
+      - "443:443"
+    expose:
+      - "80"
+      - "443"
+    volumes:
+      - ./logs/Nginx:/var/log/nginx/
+    networks:
+      - naturals_bridal_be_backend_tier
+
+volumes:
+  static_volume:
+    driver: local
+
+networks:
+  naturals_bridal_be_backend_tier:
+    driver: bridge

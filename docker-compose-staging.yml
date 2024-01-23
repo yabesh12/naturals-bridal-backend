@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  db:
+    restart: always
+    image: postgres:14.0
+    environment:
+      - POSTGRES_USER=naturals_bridal_beUser
+      - POSTGRES_PASSWORD=naturals_bridal_bePassword
+    volumes:
+      - "naturals_bridal_be_db_data:/var/lib/postgresql/data"
+    expose:
+      - 5432
+    ports:
+      - 5433:5432
+    networks:
+      - naturals_bridal_be_backend_tier
+
+  redis:
+    restart: always
+    image: redis:latest
+    networks:
+      - naturals_bridal_be_backend_tier
+
+  naturals_bridal_be:
+    restart: always
+    build: .
+    depends_on:
+      - redis
+      - db
+    env_file: .env
+    command: gunicorn naturals_bridal_be.wsgi:application --bind 0.0.0.0:8009 --workers 3 --log-level=DEBUG
+    links:
+      - db:postgres
+      - redis
+    ports:
+      - "8009:8009"
+    expose:
+      - "8009"
+    volumes:
+      - .:/app
+    networks:
+    - naturals_bridal_be_backend_tier
+
+  celery:
+    build: .
+    command: celery -A naturals_bridal_be worker -l info
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    networks:
+      - naturals_bridal_be_backend_tier
+
+  nginx:
+    build: ./nginx
+    depends_on:
+      - naturals_bridal_be
+    ports:
+      - "80:80"
+      - "443:443"
+    expose:
+      - "80"
+      - "443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d/
+      - ./static:/app/static/
+      - ./media:/app/media/
+      - ./logs/Nginx:/var/log/nginx/
+    networks:
+      - naturals_bridal_be_backend_tier
+
+volumes:
+  naturals_bridal_be_db_data:
+    driver: local
+  static_volume:
+    driver: local
+
+networks:
+  naturals_bridal_be_backend_tier:
+    driver: bridge
+

@@ -1,0 +1,53 @@
+version: '3'
+services:
+  db:
+    image: postgres:14.0
+    restart: always
+    environment:
+      - POSTGRES_USER=naturals_bridal_beUser
+      - POSTGRES_PASSWORD=naturals_bridal_bePassword
+    volumes:
+      - naturals_bridal_be_db_data:/var/lib/postgresql/data
+    networks:
+      - naturals_bridal_be_backend_tier
+  redis:
+    image: redis:latest
+    restart: always
+    networks:
+      - naturals_bridal_be_backend_tier
+
+  naturals_bridal_be:
+    restart: always
+    build: .
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    command: python manage.py runserver 0.0.0.0:8009
+    environment:
+      - DJANGO_COLLECT_STATIC=off
+      - DJANGO_MANAGEPY_MIGRATE=off
+    links:
+      - db:postgres
+      - redis
+    volumes:
+      - .:/app
+    ports:
+      - "8009:8009"
+    expose:
+      - "8009"
+    networks:
+      - naturals_bridal_be_backend_tier
+
+
+
+volumes:
+  naturals_bridal_be_db_data:
+    driver: local
+  static_volume:
+    driver: local
+
+
+networks:
+  naturals_bridal_be_backend_tier:
+    driver: bridge
